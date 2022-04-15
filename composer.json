@@ -1,0 +1,21 @@
+{
+  "name": "caerfyrddin/merlin-sync-server",
+  "version": "0.0.1",
+  "description": "Merlin project's sync server.",
+  "authors": [
+    {
+      "name": "Juan Carrion",
+      "email": "hola@juancrrn.io"
+    }
+  ],
+  "require": {
+    "php": "^8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Caerfyrddin\\MerlinSyncServer\\": "src/"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
