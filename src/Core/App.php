@@ -2,10 +2,12 @@
 
 namespace Caerfyrddin\MerlinSyncServer\Core;
 
-use Carrier\Common\Api\ApiManager;
-use Carrier\Common\SessionManager;
-use Carrier\Common\Controller\Controller;
-use Carrier\Common\View\ViewManager;
+use Caerfyrddin\MerlinSyncServer\Core\Api\ApiManager;
+use Caerfyrddin\MerlinSyncServer\Core\Controller\FrontController;
+use Caerfyrddin\MerlinSyncServer\Core\Session\SessionManager;
+use Caerfyrddin\MerlinSyncServer\Core\ValueObject\DirectoryPath;
+use Caerfyrddin\MerlinSyncServer\Core\ValueObject\Name;
+use Caerfyrddin\MerlinSyncServer\Core\ValueObject\Url;
 use Exception;
 use mysqli;
 use mysqli_sql_exception;
@@ -23,278 +25,189 @@ use mysqli_sql_exception;
 class App
 {
 
-    /**
-     * @var string App instance
-     */
-    private static $instance;
+    private static App          $instance;
 
-    /**
-     * @var SessionManager Session manager instance
-     */
-    private $sessionManagerInstance;
+    private SessionManager      $sessionManagerInstance;
+    private FrontController     $frontControllerInstance;
+    private ApiManager          $apiManagerInstance;
 
-    /**
-     * @var Controller Controller instance
-     */
-    private $controllerInstance;
+    private array               $databaseConnectionCredentials;
+    private ?mysqli             $databaseConnectionInstance;
 
-    /**
-     * @var ViewManager View manager instance
-     */
-    private $viewManagerInstance;
+    private DirectoryPath       $rootDirectoryPath;
+    private Url                 $rootUrl;
+    private DirectoryPath       $controllerBasePath;
+    private Name                $name;
 
-    /**
-     * @var ApiManager API manager instance
-     */
-    private $apiManagerInstance;
+    private bool                $inDevMode;
 
-    /**
-     * @var \mysqli Database connection instance
-     */
-    private $dbConn;
+    private array               $additionalSettings;
 
-    /**
-     * @var array Database credentials
-     */
-    private $dbCredentials;
+    private function __construct(
+        SessionManager      $sessionManagerInstance,
+        FrontController     $frontControllerInstance,
+        ApiManager          $apiManagerInstance,
 
-    /**
-     * @var string Installation root directory
-     */
-    private $root;
+        array               $databaseConnectionCredentials,
 
-    /**
-     * @var string Public URL
-     */
-    private $url;
+        DirectoryPath       $rootDirectoryPath,
+        Url                 $rootUrl,
+        DirectoryPath       $controllerBasePath,
+        Name                $name,
 
-    /**
-     * @var string Public URL path base for controller
-     */
-    private $pathBase;
+        bool                $inDevMode,
 
-    /**
-     * @var string App name
-     */
-    private $name;
-
-    /**
-     * @var string Class name of the ViewModel header part
-     */
-    private $headerPartClassName;
-
-    /**
-     * @var string Class name of the ViewModel footer part
-     */
-    private $footerPartClassName;
-
-    /**
-     * @var bool Dev mode
-     */
-    private $devMode;
-
-    /**
-     * @var array Email settings
-     */
-    private $emailSettings;
-
-    /**
-     * @var array Additional settings
-     */
-    private $additionalSettings;
-
-    /**
-     * Standard constructor (not usable)
-     */
-    private function __construct()
+        array               $additionalSettings,
+    )
     {
+        $this->sessionManagerInstance           = $sessionManagerInstance;
+        $this->frontControllerInstance          = $frontControllerInstance;
+        $this->apiManagerInstance               = $apiManagerInstance;
+
+        $this->databaseConnectionCredentials    = $databaseConnectionCredentials;
+        $this->databaseConnectionInstance       = null;
+
+        $this->rootDirectoryPath                = $rootDirectoryPath;
+        $this->rootUrl                          = $rootUrl;
+        $this->controllerBasePath               = $controllerBasePath;
+        $this->name                             = $name;
+
+        $this->inDevMode                        = $inDevMode;
+
+        $this->additionalSettings               = $additionalSettings;
     }
 
-    /**
-     * Prevents from cloning
-     */
+    /** @throws Exception */
     public function __clone()
     {
-        throw new \Exception("Cloning not allowed.");
+        throw new Exception("Cloning not allowed.");
     }
 
-    /**
-     * Prevents from serializing
-     */
+    /** @throws Exception */
     public function __sleep()
     {
-        throw new \Exception("Serializing not allowed.");
+        throw new Exception("Serializing not allowed.");
     }
 
-    /**
-     * Prevents from deserializing
-     */
+    /** @throws Exception */
     public function __wakeup()
     {
-        throw new \Exception("Deserializing not allowed.");
+        throw new Exception("Deserializing not allowed.");
     }
 
-    /**
-     * Instantiate the app
-     */
-    public static function getSingleton(): self
+    /** @throws Exception */
+    public static function app(): self
     {
-        if (! self::$instance instanceof self) {
-            self::$instance = new self;
-        }
-
+        if (! self::$instance instanceof self)
+            throw new Exception();
         return self::$instance;
     }
 
     /**
      * Initialize the app instance
      */
-    public function init(
-        array $dbCredentials,
+    public static function initialize(
+        array           $databaseConnectionCredentials,
 
-        string $root,
-        string $url,
-        string $pathBase,
-        string $name,
+        DirectoryPath   $rootDirectoryPath,
+        Url             $rootUrl,
+        DirectoryPath   $controllerBasePath,
+        Name            $name,
 
-        string $headerPartClassName,
-        string $footerPartClassName,
+        bool            $inDevMode,
 
-        bool $devMode,
-
-        array $emailSettings,
-
-        array $additionalSettings
+        array           $additionalSettings,
     ): void
     {
-        $this->dbConn = null;
+        self::$instance = new self(
+            new SessionManager(),
+            new FrontController($controllerBasePath),
+            new ApiManager(),
 
-        $this->dbCredentials = $dbCredentials;
+            $databaseConnectionCredentials,
 
-        $this->root = $root;
-        $this->url = $url;
-        $this->pathBase = $pathBase;
-        $this->name = $name;
+            $rootDirectoryPath,
+            $rootUrl,
+            $controllerBasePath,
+            $name,
 
-        $this->headerPartClassName = $headerPartClassName;
-        $this->footerPartClassName = $footerPartClassName;
+            $inDevMode,
 
-        $this->devMode = $devMode;
-
-        $this->emailSettings = $emailSettings;
-
-        $this->additionalSettings = $additionalSettings;
-
-        $this->sessionManagerInstance = new SessionManager;
-        $this->sessionManagerInstance->init();
-
-        $this->controllerInstance = new Controller($pathBase);
-
-        $this->viewManagerInstance = new ViewManager;
-
-        $this->apiManagerInstance = new ApiManager;
+            $additionalSettings
+        );
     }
 
-    /**
-     * Starts a connection with the database
-     */
-    public function getDbConn(): mysqli
+    /** @throws Exception */
+    private function initializeDatabaseConnectionInstance(): void
     {
-        if (! $this->dbConn) {
-            $host = $this->dbCredentials['host'];
-            $user = $this->dbCredentials['user'];
-            $password = $this->dbCredentials['password'];
-            $name = $this->dbCredentials['name'];
+        $host       = $this->databaseConnectionCredentials['host'];
+        $user       = $this->databaseConnectionCredentials['user'];
+        $password   = $this->databaseConnectionCredentials['password'];
+        $name       = $this->databaseConnectionCredentials['name'];
 
-            try {
-                $this->dbConn = new mysqli($host, $user, $password, $name);
-            } catch (mysqli_sql_exception $e) {
-                throw new Exception('Error al conectar con la base de datos.', 0, $e);
-            }
-
-            try {
-                $this->dbConn->set_charset("utf8mb4");
-            } catch (mysqli_sql_exception $e) {
-                throw new Exception('Error al configurar la codificación de la base de datos.', 1);
-            }
+        try {
+            $this->databaseConnectionInstance = new mysqli($host, $user, $password, $name);
+        } catch (mysqli_sql_exception $e) {
+            throw new Exception('Error connecting to the database.', 0, $e);
         }
 
-        return $this->dbConn;
+        try {
+            $this->databaseConnectionInstance->set_charset("utf8mb4");
+        } catch (mysqli_sql_exception $e) {
+            throw new Exception('Error setting up database encoding.', 1, $e);
+        }
     }
 
-    /*
-     *
-     * Getters
-     *
-     */
+    /** @throws Exception */
+    public function db(): mysqli
+    {
+        if (! $this->databaseConnectionInstance)
+            $this->initializeDatabaseConnectionInstance();
+        return $this->databaseConnectionInstance;
+    }
 
-    public function getSessionManagerInstance(): SessionManager
+    public function sessionManager(): SessionManager
     {
         return $this->sessionManagerInstance;
     }
 
-    public function getControllerInstance(): Controller
+    public function frontController(): FrontController
     {
-        return $this->controllerInstance;
+        return $this->frontControllerInstance;
     }
 
-    public function getViewManagerInstance(): ViewManager
-    {
-        return $this->viewManagerInstance;
-    }
-
-    public function getApiManagerInstance(): ApiManager
+    public function apiManager(): ApiManager
     {
         return $this->apiManagerInstance;
     }
 
-    public function getRoot(): string
+    public function rootDirectoryPath(): DirectoryPath
     {
-        return $this->root;
+        return $this->rootDirectoryPath;
     }
 
-    public function getUrl(): string
+    public function rootUrl(): Url
     {
-        return $this->url;
+        return $this->rootUrl;
     }
 
-    public function getPathBase(): string
+    public function controllerBasePath(): DirectoryPath
     {
-        return $this->pathBase;
+        return $this->controllerBasePath;
     }
 
-    public function getName(): string
+    public function name(): Name
     {
         return $this->name;
     }
 
-    public function getHeaderPartClassName(): string
+    public function isInDevMode(): bool
     {
-        return $this->headerPartClassName;
+        return $this->inDevMode;
     }
 
-    public function getFooterPartClassName(): string
-    {
-        return $this->footerPartClassName;
-    }
-
-    public function isDevMode(): bool
-    {
-        return $this->devMode;
-    }
-
-    public function getEmailSettings(): array
-    {
-        return $this->emailSettings;
-    }
-
-    public function getAdditionalSettings(): array
+    public function additionalSettings(): array
     {
         return $this->additionalSettings;
-    }
-
-    public function getAdditionalSetting(mixed $key): mixed
-    {
-        return $this->additionalSettings[$key];
     }
 }
