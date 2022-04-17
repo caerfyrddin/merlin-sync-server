@@ -19,10 +19,8 @@ interface Repository
 
     /**
      * Constructor.
-     *
-     * @param mysqli $db   Conexión a la base de datos.
      */
-    public function __construct(mysqli $db);
+    public function __construct();
 
     /**
      * Inserta el objeto en la base de datos.
@@ -32,7 +30,7 @@ interface Repository
      * @return bool|int El identificador del objeto insertado si no ha habido
      *                  ningún problema, o false en caso contrario.
      */
-    public function insert(): bool|int;
+    //public function insert(): bool|int;
 
     /**
      * Actualiza o inserta el objeto en la base de datos, según si tiene o no
@@ -43,7 +41,7 @@ interface Repository
      * @return bool True si se ha actualizado correctamente o false si ha habido
      *              algún problema.
      */
-    public function update(): bool;
+    //public function update(): bool;
 
     /**
      * Comprueba si existe un objeto en la base de datos en base a su id.
@@ -63,7 +61,7 @@ interface Repository
      *
      * @return mixed    Objeto recogido.
      */
-    public function retrieveById(int $id): mixed;
+    //public function fromIdOrFail(int $id): mixed;
 
     /**
      * Recoge todos los objetos de la base de datos.

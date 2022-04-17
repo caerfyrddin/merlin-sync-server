@@ -1,12 +1,13 @@
 <?php
 
-namespace Carrier\Domain\User;
+namespace Caerfyrddin\MerlinSyncServer\Shared\Infrastructure\Persistence\User;
 
+use Caerfyrddin\MerlinSyncServer\Core\App;
+use Caerfyrddin\MerlinSyncServer\Core\Persistence\Repository;
+use Caerfyrddin\MerlinSyncServer\Shared\Domain\Aggregate\User;
+use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId;
 use DateTime;
-use Carrier\Common\App;
-use Carrier\Common\CommonUtils;
-use Carrier\Domain\PermissionGroup\PermissionGroupRepository;
-use Carrier\Domain\Repository;
+use mysqli;
 
 /**
  * User repository
@@ -22,18 +23,13 @@ class UserRepository implements Repository
 {
 
     /**
-     * @var \mysqli $db     Conexión a la base de datos.
+     * @var mysqli Autowired on construction via the app's singleton instance.
      */
-    protected $db;
+    protected mysqli $db;
 
-    /**
-     * Constructor
-     *
-     * @param \mysqli $db   Conexión a la base de datos.
-     */
-    public function __construct(\mysqli $db)
+    public function __construct()
     {
-        $this->db = App::getSingleton()->getDbConn();
+        //$this->db = App::app()->db();
     }
 
     /**
@@ -366,48 +362,11 @@ class UserRepository implements Repository
         return $return;
     }
 
-    /**
-     * Comprueba si existe un usuario en base a un NIF o NIE.
-     *
-     * @param string $testGovId
-     *
-     * @return bool|int El identificador en caso de existir o false en otro
-     *                  caso.
-     */
-    public function findByGovId(string $testGovId): bool|int
+    public function fromIdOrFail(UserId $id): User
     {
-        $testGovId = mb_strtolower($testGovId);
+        return User::fromIdAsPlaceholder($id);
 
-        $query = <<< SQL
-        SELECT 
-            id
-        FROM
-            users
-        WHERE
-            gov_id = ?
-        LIMIT 1
-        SQL;
-
-        $stmt = $this->db->prepare($query);
-        $stmt->bind_param('s', $testGovId);
-        $stmt->execute();
-
-        $result = $stmt->get_result();
-
-        if ($result->num_rows != 1) {
-            $return = false;
-        } else {
-            $return = $result->fetch_object()->id;
-        }
-
-        $stmt->close();
-
-        return $return;
-    }
-
-    public function retrieveById(int $id, ?bool $loadPermissionGroups = false): User
-    {
-        $query = <<< SQL
+        /*$query = <<< SQL
         SELECT
             id,
             gov_id,
@@ -443,7 +402,8 @@ class UserRepository implements Repository
 
         $stmt->close();
 
-        return $element;
+        return $element;*/
+
     }
 
     public function retrieveJustHashedPasswordById(int $id): string

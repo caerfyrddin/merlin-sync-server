@@ -1,6 +1,6 @@
 <?php
 
-namespace Caerfyrddin\MerlinSyncServer\Core;
+namespace Caerfyrddin\MerlinSyncServer\Core\Http;
 
 /**
  * Allowed HTTP methods

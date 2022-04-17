@@ -2,7 +2,8 @@
 
 namespace Caerfyrddin\MerlinSyncServer\Core\Api;
 
-use Caerfyrddin\MerlinSyncServer\Core\Http;
+use Caerfyrddin\MerlinSyncServer\Core\Http\HttpHelper;
+use JetBrains\PhpStorm\NoReturn;
 
 /**
  * Api-related functionality and management
@@ -32,13 +33,14 @@ class ApiManager
      * @param object $data Data to send in the response
      * @param array|null $messages Messages to send in the response
      */
+    #[NoReturn]
     public static function apiRespond(
         int $httpStatusCode,
         mixed $data,
         ?array $messages = []
     ): void
     {
-        Http::respondJson(
+        HttpHelper::respondJson(
             $httpStatusCode,
             [
                 'data' => $data,

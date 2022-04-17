@@ -1,15 +1,7 @@
 <?php
 
-require_once __DIR__ . '/../config/init.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-use Juancrrn\Carrier\Common\App;
-use Juancrrn\Carrier\Common\Controller\AnyoneRouteGroup;
-use Juancrrn\Carrier\Common\Controller\LoggedInRouteGroup;
+use Caerfyrddin\MerlinSyncServer\Core\Kernel;
 
-$controllerInstance = App::getSingleton()->getControllerInstance();
-
-(new AnyoneRouteGroup($controllerInstance))->runAll();
-
-(new LoggedInRouteGroup($controllerInstance))->runAll();
-
-(new AnyoneRouteGroup($controllerInstance))->runDefault();
+Kernel::run();

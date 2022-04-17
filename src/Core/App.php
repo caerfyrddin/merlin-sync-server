@@ -25,7 +25,7 @@ use mysqli_sql_exception;
 class App
 {
 
-    private static App          $instance;
+    private static ?App          $instance = null;
 
     private SessionManager      $sessionManagerInstance;
     private FrontController     $frontControllerInstance;
@@ -95,11 +95,8 @@ class App
         throw new Exception("Deserializing not allowed.");
     }
 
-    /** @throws Exception */
     public static function app(): self
     {
-        if (! self::$instance instanceof self)
-            throw new Exception();
         return self::$instance;
     }
 
@@ -113,6 +110,8 @@ class App
         Url             $rootUrl,
         DirectoryPath   $controllerBasePath,
         Name            $name,
+
+        array           $controllers,
 
         bool            $inDevMode,
 
@@ -135,6 +134,8 @@ class App
 
             $additionalSettings
         );
+
+        self::$instance->frontController()->initialize($controllers);
     }
 
     /** @throws Exception */

@@ -1,6 +1,6 @@
 <?php
 
-namespace Caerfyrddin\MerlinSyncServer\Core;
+namespace Caerfyrddin\MerlinSyncServer\Core\Http;
 
 use JetBrains\PhpStorm\NoReturn;
 
@@ -14,7 +14,7 @@ use JetBrains\PhpStorm\NoReturn;
  * @version 0.0.1
  */
 
-class Http
+class HttpHelper
 {
 
     /**
@@ -46,7 +46,7 @@ class Http
      */
     public static function isRequestMethod(HttpMethod $testRequestMethod): bool
     {
-        return $_SERVER['REQUEST_METHOD'] == $testRequestMethod;
+        return $_SERVER['REQUEST_METHOD'] == $testRequestMethod->value;
     }
 
     /**
@@ -76,6 +76,7 @@ class Http
 
         if (preg_match('#^' . $urlBase . $testRoute . $getParamsRegEx . '$#', $_SERVER['REQUEST_URI'], $matches) == 1) {
             array_shift($matches);
+            $matches = array_filter($matches, "is_string", ARRAY_FILTER_USE_KEY);
 
             return true;
         } else {

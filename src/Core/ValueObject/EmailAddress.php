@@ -1,6 +1,6 @@
 <?php
 
-namespace Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject;
+namespace Caerfyrddin\MerlinSyncServer\Core\ValueObject;
 
 use JsonSerializable;
 

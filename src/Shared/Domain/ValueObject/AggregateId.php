@@ -27,7 +27,7 @@ class AggregateId implements JsonSerializable, Stringable
 
     public static function from(int $aggregateId): static
     {
-        return new self($aggregateId);
+        return new static($aggregateId);
     }
 
     public function aggregateId(): int

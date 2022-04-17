@@ -154,7 +154,7 @@ class ValidationHelper
         if (! is_string($testItem))
             return false;
 
-        if (! preg_match(self::PASSWORD_REGEX, $testItem, $unused, PREG_OFFSET_CAPTURE, 0))
+        if (! preg_match(self::PASSWORD_REGEX, $testItem, $unused, PREG_OFFSET_CAPTURE))
             return false;
 
         return true;
