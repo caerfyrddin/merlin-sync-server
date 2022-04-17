@@ -5,11 +5,13 @@ namespace Caerfyrddin\MerlinSyncServer\Shared\Domain\Aggregate;
 use Caerfyrddin\MerlinSyncServer\Core\Data\Aggregate;
 use Caerfyrddin\MerlinSyncServer\Core\Helper\DateTimeHelper;
 use Caerfyrddin\MerlinSyncServer\Core\Persistence\MysqliDTO;
+use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\AggregateId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId;
 use DateTime;
 use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\Pure;
 use JsonSerializable;
 
 /**
@@ -22,20 +24,20 @@ use JsonSerializable;
  * @version 0.0.1
  */
 
-class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
+final class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
 {
 
-    private Name            $firstName;
-    private Name            $lastName;
-    // private User            $scopeOwner;
-    private UserId          $scopeOwnerId;
+    private ?Name           $firstName;
+    private ?Name           $lastName;
+    private ?User           $scopeOwner;
     // TODO Add a face representation to easily recognize an person
 
+    #[Pure]
     public function __construct(
         ?FacePersonId   $id,
-        Name            $firstName,
-        Name            $lastName,
-        UserId          $scopeOwnerId,
+        ?Name           $firstName,
+        ?Name           $lastName,
+        ?User           $scopeOwner,
         ?DateTime       $createdAt,
         ?DateTime       $modifiedAt
     )
@@ -43,7 +45,7 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
         parent::__construct($id, $createdAt, $modifiedAt);
         $this->firstName    = $firstName;
         $this->lastName     = $lastName;
-        $this->scopeOwnerId = $scopeOwnerId;
+        $this->scopeOwner   = $scopeOwner;
     }
 
     public static function fromMysqliObject(object $object): static
@@ -52,10 +54,17 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
             FacePersonId::from($object->id),
             Name::from($object->first_name),
             Name::from($object->last_name),
-            UserId::from($object->scope_owner),
+            User::fromIdAsPlaceholder($object->scope_owner),
             DateTimeHelper::fromMysqliDateTime($object->created_at),
             DateTimeHelper::fromMysqliDateTime($object->modified_at)
         );
+    }
+
+    public static function fromIdAsPlaceholder($id): static
+    {
+        $aggregate = new self($id, null, null, null, null, null);
+        $aggregate->setPersistenceStatusAsPlaceholder();
+        return $aggregate;
     }
 
     /**
@@ -71,7 +80,7 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
             null,
             $firstName,
             $lastName,
-            $scopeOwnerId,
+            User::fromIdAsPlaceholder($scopeOwnerId),
             new DateTime(),
             null,
         );
@@ -79,6 +88,7 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getFirstName(): Name
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->firstName;
     }
 
@@ -89,6 +99,7 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getLastName(): Name
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->lastName;
     }
 
@@ -97,22 +108,23 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
         $this->lastName = $lastName;
     }
 
-    public function getScopeOwnerId(): UserId
+    public function getScopeOwner(): User
     {
-        return $this->scopeOwnerId;
+        $this->checkForeignAggregateRetrieved($this->scopeOwner);
+        return $this->scopeOwner;
     }
 
-    public function setScopeOwnerId(UserId $scopeOwnerId): void
+    public function setScopeOwner(User $scopeOwner): void
     {
-        $this->scopeOwnerId = $scopeOwnerId;
+        $this->scopeOwner = $scopeOwner;
     }
 
     #[ArrayShape([
-        'id'            => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId",
-        'firstName'     => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name",
-        'lastName'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name",
-        'scopeOwnerId'  => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId",
-        'createdAt'     => "\DateTime",
+        'id'            => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId|null",
+        'firstName'     => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name|null",
+        'lastName'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name|null",
+        'scopeOwner'    => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\User|null",
+        'createdAt'     => "\DateTime|null",
         'modifiedAt'    => "\DateTime|null",
     ])]
     public function jsonSerialize(): array
@@ -121,7 +133,7 @@ class FacePerson extends Aggregate implements JsonSerializable, MysqliDTO
             'id'            => $this->id,
             'firstName'     => $this->firstName,
             'lastName'      => $this->lastName,
-            'scopeOwnerId'  => $this->scopeOwnerId,
+            'scopeOwner'    => $this->scopeOwner,
             'createdAt'     => $this->createdAt,
             'modifiedAt'    => $this->modifiedAt,
         ];

@@ -11,6 +11,7 @@ use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FaceInPhotoId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoId;
 use DateTime;
 use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\Pure;
 use JsonSerializable;
 
 /**
@@ -23,35 +24,34 @@ use JsonSerializable;
  * @version 0.0.1
  */
 
-class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
+final class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
 {
 
-    // private ?Photo          $photo;
-    private PhotoId         $photoId;
-    // private ?FaceClass      $faceClass;
-    private FaceClassId     $faceClassId;
-    private FaceEmbedding   $embedding;
-    private int             $rectTop;
-    private int             $rectRight;
-    private int             $rectBottom;
-    private int             $rectLeft;
+    private ?Photo          $photo;
+    private ?FaceClass      $faceClass;
+    private ?FaceEmbedding  $embedding;
+    private ?int            $rectTop;
+    private ?int            $rectRight;
+    private ?int            $rectBottom;
+    private ?int            $rectLeft;
 
+    #[Pure]
     public function __construct(
         ?FaceInPhotoId  $id,
-        PhotoId         $photoId,
-        FaceClassId     $faceClassId,
-        FaceEmbedding   $embedding,
-        int             $rectTop,
-        int             $rectRight,
-        int             $rectBottom,
-        int             $rectLeft,
+        ?Photo          $photo,
+        ?FaceClass      $faceClass,
+        ?FaceEmbedding  $embedding,
+        ?int            $rectTop,
+        ?int            $rectRight,
+        ?int            $rectBottom,
+        ?int            $rectLeft,
         ?DateTime       $createdAt,
         ?DateTime       $modifiedAt
     )
     {
         parent::__construct($id, $createdAt, $modifiedAt);
-        $this->photoId      = $photoId;
-        $this->faceClassId  = $faceClassId;
+        $this->photo        = $photo;
+        $this->faceClass    = $faceClass;
         $this->embedding    = $embedding;
         $this->rectTop      = $rectTop;
         $this->rectRight    = $rectRight;
@@ -63,8 +63,8 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
     {
         return new self(
             FaceInPhotoId::from($object->id),
-            PhotoId::from($object->photo),
-            FaceClassId::from($object->face_class),
+            Photo::fromIdAsPlaceholder($object->photo),
+            FaceClass::fromIdAsPlaceholder($object->face_class),
             FaceEmbedding::fromJsonString($object->embedding),
             $object->rect_top,
             $object->rect_right,
@@ -73,6 +73,13 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
             DateTimeHelper::fromMysqliDateTime($object->created_at),
             DateTimeHelper::fromMysqliDateTime($object->modified_at),
         );
+    }
+
+    public static function fromIdAsPlaceholder($id): static
+    {
+        $aggregate = new self($id, null, null, null, null, null, null, null, null, null);
+        $aggregate->setPersistenceStatusAsPlaceholder();
+        return $aggregate;
     }
 
     /**
@@ -90,8 +97,8 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
     {
         return new self(
             null,
-            $photoId,
-            $faceClassId,
+            Photo::fromIdAsPlaceholder($photoId),
+            FaceClass::fromIdAsPlaceholder($faceClassId),
             $embedding,
             $rectTop,
             $rectRight,
@@ -102,28 +109,31 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
         );
     }
 
-    public function getPhotoId(): PhotoId
+    public function getPhoto(): Photo
     {
-        return $this->photoId;
+        $this->checkForeignAggregateRetrieved($this->photo);
+        return $this->photo;
     }
 
-    public function setPhotoId(PhotoId $photoId): void
+    public function setPhoto(Photo $photo): void
     {
-        $this->photoId = $photoId;
+        $this->photo = $photo;
     }
 
-    public function getFaceClassId(): FaceClassId
+    public function getFaceClass(): FaceClass
     {
-        return $this->faceClassId;
+        $this->checkForeignAggregateRetrieved($this->faceClass);
+        return $this->faceClass;
     }
 
-    public function setFaceClassId(FaceClassId $faceClassId): void
+    public function setFaceClass(FaceClass $faceClass): void
     {
-        $this->faceClassId = $faceClassId;
+        $this->faceClass = $faceClass;
     }
 
     public function getEmbedding(): FaceEmbedding
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->embedding;
     }
 
@@ -144,6 +154,7 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getRectRight(): int
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->rectRight;
     }
 
@@ -154,6 +165,7 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getRectBottom(): int
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->rectBottom;
     }
 
@@ -164,6 +176,7 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getRectLeft(): int
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->rectLeft;
     }
 
@@ -180,6 +193,7 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
     ])]
     public function getRect(): array
     {
+        $this->checkNotInPlaceholderStatus();
         return [
             'top'       => $this->rectTop,
             'right'     => $this->rectRight,
@@ -192,8 +206,8 @@ class FaceInPhoto extends Aggregate implements JsonSerializable, MysqliDTO
     {
         return [
             'id'            => $this->id,
-            'photoId'       => $this->photoId,
-            'faceClassId'   => $this->faceClassId,
+            'photo'         => $this->photo,
+            'faceClass'     => $this->faceClass,
             'embedding'     => $this->embedding,
             'rectTop'       => $this->rectTop,
             'rectRight'     => $this->rectRight,

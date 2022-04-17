@@ -7,11 +7,13 @@ use Caerfyrddin\MerlinSyncServer\Core\Helper\DateTimeHelper;
 use Caerfyrddin\MerlinSyncServer\Core\Persistence\MysqliDTO;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\UserRoleType;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\UserStatusType;
+use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\AggregateId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\EmailAddress;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId;
 use DateTime;
 use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\Pure;
 use JsonSerializable;
 
 /**
@@ -24,24 +26,25 @@ use JsonSerializable;
  * @version 0.0.1
  */
 
-class User extends Aggregate implements JsonSerializable, MysqliDTO
+final class User extends Aggregate implements JsonSerializable, MysqliDTO
 {
 
-    private Name            $firstName;
-    private Name            $lastName;
-    private EmailAddress    $emailAddress;
-    private UserRoleType    $role;
-    private UserStatusType  $status;
+    private ?Name           $firstName;
+    private ?Name           $lastName;
+    private ?EmailAddress   $emailAddress;
+    private ?UserRoleType   $role;
+    private ?UserStatusType $status;
 
     private static UserStatusType $defaultStatus = UserStatusType::Enabled;
 
+    #[Pure]
     public function __construct(
         ?UserId         $id,
-        Name            $firstName,
-        Name            $lastName,
-        EmailAddress    $emailAddress,
-        UserRoleType    $role,
-        UserStatusType  $status,
+        ?Name           $firstName,
+        ?Name           $lastName,
+        ?EmailAddress   $emailAddress,
+        ?UserRoleType   $role,
+        ?UserStatusType $status,
         ?DateTime       $createdAt,
         ?DateTime       $modifiedAt
     )
@@ -68,6 +71,13 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
         );
     }
 
+    public static function fromIdAsPlaceholder($id): static
+    {
+        $aggregate = new self($id, null, null, null, null, null, null, null);
+        $aggregate->setPersistenceStatusAsPlaceholder();
+        return $aggregate;
+    }
+
     /**
      * Construct a newly-created, non-persisted user
      */
@@ -92,6 +102,7 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getFirstName(): Name
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->firstName;
     }
 
@@ -102,6 +113,7 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getLastName(): Name
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->lastName;
     }
 
@@ -112,6 +124,7 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getEmailAddress(): EmailAddress
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->emailAddress;
     }
 
@@ -122,6 +135,7 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getRole(): UserRoleType
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->role;
     }
 
@@ -132,6 +146,7 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getStatus(): UserStatusType
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->status;
     }
 
@@ -141,13 +156,13 @@ class User extends Aggregate implements JsonSerializable, MysqliDTO
     }
 
     #[ArrayShape([
-        'id'            => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId",
-        'firstName'     => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name",
-        'lastName'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name",
-        'emailAddress'  => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\EmailAddress",
-        'role'          => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\UserRoleType",
-        'status'        => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\UserStatusType",
-        'createdAt'     => "\DateTime",
+        'id'            => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId|null",
+        'firstName'     => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name|null",
+        'lastName'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name|null",
+        'emailAddress'  => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\EmailAddress|null",
+        'role'          => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\UserRoleType|null",
+        'status'        => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\UserStatusType|null",
+        'createdAt'     => "\DateTime|null",
         'modifiedAt'    => "\DateTime|null",
     ])]
     public function jsonSerialize(): array

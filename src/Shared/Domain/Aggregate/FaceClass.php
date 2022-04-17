@@ -5,6 +5,7 @@ namespace Caerfyrddin\MerlinSyncServer\Shared\Domain\Aggregate;
 use Caerfyrddin\MerlinSyncServer\Core\Data\Aggregate;
 use Caerfyrddin\MerlinSyncServer\Core\Helper\DateTimeHelper;
 use Caerfyrddin\MerlinSyncServer\Core\Persistence\MysqliDTO;
+use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\AggregateId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FaceClassId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FaceEmbedding;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId;
@@ -12,6 +13,7 @@ use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\Name;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId;
 use DateTime;
 use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\Pure;
 use JsonSerializable;
 
 /**
@@ -24,40 +26,46 @@ use JsonSerializable;
  * @version 0.0.1
  */
 
-class FaceClass extends Aggregate implements JsonSerializable, MysqliDTO
+final class FaceClass extends Aggregate implements JsonSerializable, MysqliDTO
 {
 
-    // private ?User           $scopeOwner;
-    private UserId          $scopeOwnerId;
-    private FaceEmbedding   $meanEmbedding;
-    // private ?FacePerson     $personAssociation;
-    private FacePersonId    $personAssociationId;
+    private ?User           $scopeOwner;
+    private ?FaceEmbedding  $meanEmbedding;
+    private ?FacePerson     $associatedPerson;
 
+    #[Pure]
     public function __construct(
-        ?FaceClassId   $id,
-        UserId          $scopeOwnerId,
-        FaceEmbedding   $meanEmbedding,
-        FacePersonId    $personAssociationId,
+        ?FaceClassId    $id,
+        ?User           $scopeOwner,
+        ?FaceEmbedding  $meanEmbedding,
+        ?FacePerson     $associatedPerson,
         ?DateTime       $createdAt,
         ?DateTime       $modifiedAt
     )
     {
         parent::__construct($id, $createdAt, $modifiedAt);
-        $this->scopeOwnerId         = $scopeOwnerId;
+        $this->scopeOwner           = $scopeOwner;
         $this->meanEmbedding        = $meanEmbedding;
-        $this->personAssociationId    = $personAssociationId;
+        $this->associatedPerson     = $associatedPerson;
     }
 
     public static function fromMysqliObject(object $object): static
     {
         return new self(
             FaceClassId::from($object->id),
-            UserId::from($object->scope_owner),
+            User::fromIdAsPlaceholder($object->scope_owner),
             FaceEmbedding::fromJsonString($object->mean_embedding),
-            FacePersonId::from($object->person_association),
+            FacePerson::fromIdAsPlaceholder($object->associated_person),
             DateTimeHelper::fromMysqliDateTime($object->created_at),
             DateTimeHelper::fromMysqliDateTime($object->modified_at)
         );
+    }
+
+    public static function fromIdAsPlaceholder($id): static
+    {
+        $aggregate = new self($id, null, null, null, null, null);
+        $aggregate->setPersistenceStatusAsPlaceholder();
+        return $aggregate;
     }
 
     /**
@@ -66,31 +74,33 @@ class FaceClass extends Aggregate implements JsonSerializable, MysqliDTO
     public static function fromNew(
         UserId          $scopeOwnerId,
         FaceEmbedding   $meanEmbedding,
-        FacePersonId    $personAssociationId,
+        FacePersonId    $associatedPersonId,
     ): self
     {
         return new self(
             null,
-            $scopeOwnerId,
+            User::fromIdAsPlaceholder($scopeOwnerId),
             $meanEmbedding,
-            $personAssociationId,
+            FacePerson::fromIdAsPlaceholder($associatedPersonId),
             new DateTime(),
             null,
         );
     }
 
-    public function getScopeOwnerId(): UserId
+    public function getScopeOwner(): User
     {
-        return $this->scopeOwnerId;
+        $this->checkForeignAggregateRetrieved($this->scopeOwner);
+        return $this->scopeOwner;
     }
 
-    public function setScopeOwnerId(UserId $scopeOwnerId): void
+    public function setScopeOwner(User $scopeOwner): void
     {
-        $this->scopeOwnerId = $scopeOwnerId;
+        $this->scopeOwner = $scopeOwner;
     }
 
     public function getMeanEmbedding(): FaceEmbedding
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->meanEmbedding;
     }
 
@@ -99,31 +109,32 @@ class FaceClass extends Aggregate implements JsonSerializable, MysqliDTO
         $this->meanEmbedding = $meanEmbedding;
     }
 
-    public function getPersonAssociationId(): FacePersonId
+    public function getAssociatedPerson(): FacePerson
     {
-        return $this->personAssociationId;
+        $this->checkForeignAggregateRetrieved($this->associatedPerson);
+        return $this->associatedPerson;
     }
 
-    public function setPersonAssociationId(FacePersonId $personAssociationId): void
+    public function setAssociatedPerson(FacePerson $associatedPerson): void
     {
-        $this->personAssociationId = $personAssociationId;
+        $this->associatedPerson = $associatedPerson;
     }
 
     #[ArrayShape([
-        'id'                    => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId",
-        'scopeOwnerId'          => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId",
-        'meanEmbedding'         => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FaceEmbedding",
-        'personAssociationId'   => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId",
-        'createdAt'             => "\DateTime",
+        'id'                    => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FacePersonId|null",
+        'scopeOwner'            => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\Aggregate\User|null",
+        'meanEmbedding'         => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\FaceEmbedding|null",
+        'associatedPerson'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\Aggregate\FacePerson|null",
+        'createdAt'             => "\DateTime|null",
         'modifiedAt'            => "\DateTime|null",
     ])]
     public function jsonSerialize(): array
     {
         return [
             'id'                    => $this->id,
-            'scopeOwnerId'          => $this->scopeOwnerId,
+            'scopeOwner'            => $this->scopeOwner,
             'meanEmbedding'         => $this->meanEmbedding,
-            'personAssociationId'   => $this->personAssociationId,
+            'associatedPerson'      => $this->associatedPerson,
             'createdAt'             => $this->createdAt,
             'modifiedAt'            => $this->modifiedAt,
         ];

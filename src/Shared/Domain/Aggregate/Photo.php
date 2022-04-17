@@ -8,6 +8,7 @@ use Caerfyrddin\MerlinSyncServer\Core\Persistence\MysqliDTO;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\PhotoOriginClientType;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\PhotoProcessingStatusType;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\Type\PhotoSyncStatusType;
+use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\AggregateId;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\DirectoryPath;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoDescription;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoId;
@@ -16,6 +17,7 @@ use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoTitle;
 use Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId;
 use DateTime;
 use JetBrains\PhpStorm\ArrayShape;
+use JetBrains\PhpStorm\Pure;
 use JsonSerializable;
 
 /**
@@ -28,40 +30,40 @@ use JsonSerializable;
  * @version 0.0.1
  */
 
-class Photo extends Aggregate implements JsonSerializable, MysqliDTO
+final class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 {
 
-    // private ?User                       $owner;
-    private UserId                      $ownerId;
+    private ?User                       $owner;
     private ?PhotoTitle                 $title;
     private ?PhotoDescription           $description;
     private ?DateTime                   $takenAt;
-    private PhotoOriginClientType       $originClient;
+    private ?PhotoOriginClientType      $originClient;
     private ?PhotoOriginDescription     $originDescription;
     private ?DirectoryPath              $originDirectory;
-    private PhotoSyncStatusType         $syncStatus;
-    private PhotoProcessingStatusType   $processingStatus;
+    private ?PhotoSyncStatusType        $syncStatus;
+    private ?PhotoProcessingStatusType  $processingStatus;
 
-    private static PhotoSyncStatusType $defaultSyncStatus = PhotoSyncStatusType::Pending;
-    private static PhotoProcessingStatusType $defaultProcessingStatus = PhotoProcessingStatusType::Pending;
+    private static PhotoSyncStatusType          $DEFAULT_SYNC_STATUS        = PhotoSyncStatusType::Pending;
+    private static PhotoProcessingStatusType    $DEFAULT_PROCESSING_STATUS  = PhotoProcessingStatusType::Pending;
 
+    #[Pure]
     public function __construct(
         ?PhotoId                    $id,
-        UserId                      $ownerId,
+        ?User                       $owner,
         ?PhotoTitle                 $title,
         ?PhotoDescription           $description,
         ?DateTime                   $takenAt,
-        PhotoOriginClientType       $originClient,
+        ?PhotoOriginClientType      $originClient,
         ?PhotoOriginDescription     $originDescription,
         ?DirectoryPath              $originDirectory,
-        PhotoSyncStatusType         $syncStatus,
-        PhotoProcessingStatusType   $processingStatus,
+        ?PhotoSyncStatusType        $syncStatus,
+        ?PhotoProcessingStatusType  $processingStatus,
         ?DateTime                   $createdAt,
         ?DateTime                   $modifiedAt,
     )
     {
         parent::__construct($id, $createdAt, $modifiedAt);
-        $this->ownerId              = $ownerId;
+        $this->owner                = $owner;
         $this->title                = $title;
         $this->description          = $description;
         $this->takenAt              = $takenAt;
@@ -76,7 +78,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
     {
         return new self(
             PhotoId::from($object->id),
-            UserId::from($object->owner),
+            User::fromIdAsPlaceholder($object->owner),
             PhotoTitle::from($object->title),
             PhotoDescription::from($object->description),
             DateTimeHelper::fromMysqliDateTime($object->taken_at),
@@ -88,6 +90,13 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
             DateTimeHelper::fromMysqliDateTime($object->created_at),
             DateTimeHelper::fromMysqliDateTime($object->modified_at),
         );
+    }
+
+    public static function fromIdAsPlaceholder($id) : static
+    {
+        $aggregate = new self($id, null, null, null, null, null, null, null, null, null, null, null);
+        $aggregate->setPersistenceStatusAsPlaceholder();
+        return $aggregate;
     }
 
     /**
@@ -105,32 +114,34 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
     {
         return new self(
             null,
-            $ownerId,
+            User::fromIdAsPlaceholder($ownerId),
             $title,
             $description,
             $takenAt,
             $originClient,
             $originDescription,
             $originDirectory,
-            self::$defaultSyncStatus,
-            self::$defaultProcessingStatus,
+            self::$DEFAULT_SYNC_STATUS,
+            self::$DEFAULT_PROCESSING_STATUS,
             new DateTime(),
             null
         );
     }
 
-    public function getOwnerId(): UserId
+    public function getOwner(): User
     {
-        return $this->ownerId;
+        $this->checkForeignAggregateRetrieved($this->owner);
+        return $this->owner;
     }
 
-    public function setOwnerId(UserId $ownerId): void
+    public function setOwner(User $owner): void
     {
-        $this->ownerId = $ownerId;
+        $this->owner = $owner;
     }
 
     public function getTitle(): ?PhotoTitle
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->title;
     }
 
@@ -141,6 +152,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getDescription(): ?PhotoDescription
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->description;
     }
 
@@ -151,6 +163,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getTakenAt(): ?DateTime
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->takenAt;
     }
 
@@ -161,6 +174,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getOriginClient(): PhotoOriginClientType
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->originClient;
     }
 
@@ -171,6 +185,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getOriginDescription(): ?PhotoOriginDescription
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->originDescription;
     }
 
@@ -181,6 +196,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getOriginDirectory(): ?DirectoryPath
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->originDirectory;
     }
 
@@ -191,6 +207,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getSyncStatus(): PhotoSyncStatusType
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->syncStatus;
     }
 
@@ -201,6 +218,7 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
 
     public function getProcessingStatus(): PhotoProcessingStatusType
     {
+        $this->checkNotInPlaceholderStatus();
         return $this->processingStatus;
     }
 
@@ -210,24 +228,24 @@ class Photo extends Aggregate implements JsonSerializable, MysqliDTO
     }
 
     #[ArrayShape([
-        'id'                => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoId",
-        'ownerId'           => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\UserId",
+        'id'                => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoId|null",
+        'owner'             => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\User|null",
         'title'             => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoTitle|null",
         'description'       => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoDescription|null",
         'takenAt'           => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\DateTime|null",
-        'originClient'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoOriginClientType",
+        'originClient'      => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoOriginClientType|null",
         'originDescription' => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoOriginDescription|null",
         'originDirectory'   => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\DirectoryPath|null",
-        'syncStatus'        => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoSyncStatusType",
-        'processingStatus'  => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoProcessingStatusType",
-        'createdAt'         => "\DateTime",
+        'syncStatus'        => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoSyncStatusType|null",
+        'processingStatus'  => "\Caerfyrddin\MerlinSyncServer\Shared\Domain\ValueObject\PhotoProcessingStatusType|null",
+        'createdAt'         => "\DateTime|null",
         'modifiedAt'        => "\DateTime|null",
     ])]
     public function jsonSerialize(): array
     {
         return [
             'id'                => $this->id,
-            'ownerId'           => $this->ownerId,
+            'owner'           => $this->owner,
             'title'             => $this->title,
             'description'       => $this->description,
             'takenAt'           => $this->takenAt,
